@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cogtasks"
+version = "0.1.0"
+description = "Cog20 (Yang et al. 2019) and Mod-Cog (Khona et al. 2023) cognitive tasks on neurogym"
+requires-python = ">=3.10"
+dependencies = [
+    "neurogym==2.3.1",
+    "torch",  # neurogym 2.3.1 imports torch at load time
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cogtasks"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
