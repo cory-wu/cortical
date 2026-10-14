@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cogtasks"
 version = "0.1.0"
-description = "Cog20 (Yang et al. 2019) and Mod-Cog (Khona et al. 2023) cognitive tasks on neurogym"
+description = "Cog20 and Mod-Cog cognitive tasks, both from the Mod-Cog implementation (Khona et al. 2023)"
 requires-python = ">=3.10"
 dependencies = [
     "neurogym==2.3.1",
@@ -21,3 +21,14 @@ packages = ["src/cogtasks"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["src/cogtasks/modcog/_envs.py", "src/cogtasks/modcog/_tasks.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ["src/cogtasks/modcog/_envs\\.py", "src/cogtasks/modcog/_tasks\\.py"]

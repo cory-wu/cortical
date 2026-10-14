@@ -3,7 +3,8 @@
 Source: https://github.com/mikailkhona/Mod_Cog (mod_cog_tasks.py, commit
 41101436a130fc31deb61e81cc48925c75bed617, CC0-1.0). Function bodies are
 unchanged, including upstream quirks (e.g. ``dlyantiseqr`` overwrites its
-``delay`` timing, ``*intseq`` variants pass ``integrate=True``/``seq=True``).
+``delay`` timing). The 11 upstream ``*intseq`` factories, which are outside
+both the Cog20 and the 82-task Mod-Cog sets, are removed.
 """
 
 from neurogym.utils import scheduler
@@ -138,15 +139,6 @@ def dlygointl(**kwargs):
     env_kwargs['dly'] = True
     return _reach(**env_kwargs)
 
-def dlygointseq(**kwargs):
-    env_kwargs = kwargs.copy()
-    env_kwargs['anti'] = False
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
-    return _reach(**env_kwargs)
-
-
 def dlyanti(**kwargs):
     env_kwargs = kwargs.copy()
     env_kwargs['anti'] = True
@@ -181,14 +173,6 @@ def dlyantiintl(**kwargs):
     env_kwargs['anti'] = True
     env_kwargs['integrate'] = -1
     #env_kwargs['timing'] = {'delay': 500}
-    return _reach(**env_kwargs)
-
-def dlyantiintseq(**kwargs):
-    env_kwargs = kwargs.copy()
-    env_kwargs['anti'] = True
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
     return _reach(**env_kwargs)
 
 #Second family of tasks (DM Family)
@@ -357,15 +341,6 @@ def dlydm1intl(**kwargs):
     return _DMFamily(**env_kwargs)
 
 
-def dlydm1intseq(**kwargs):
-    env_kwargs = _dlydm_kwargs()
-    env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (True, False)})
-    env_kwargs.update(kwargs)
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
-    return _DMFamily(**env_kwargs)
-
 def dlydm2(**kwargs):
     env_kwargs = _dlydm_kwargs()
     env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (False, True)})
@@ -402,16 +377,6 @@ def dlydm2intl(**kwargs):
     env_kwargs['integrate'] = -1
     return _DMFamily(**env_kwargs)
 
-def dlydm2intseq(**kwargs):
-    env_kwargs = _dlydm_kwargs()
-    env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (False, True)})
-    env_kwargs.update(kwargs)
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
-    return _DMFamily(**env_kwargs)
-
-
 def ctxdlydm1(**kwargs):
     env_kwargs = _dlydm_kwargs()
     env_kwargs.update({'w_mod': (1, 0), 'stim_mod': (True, True)})
@@ -447,15 +412,6 @@ def ctxdlydm1intl(**kwargs):
     env_kwargs.update({'w_mod': (1, 0), 'stim_mod': (True, True)})
     env_kwargs.update(kwargs)
     env_kwargs['integrate'] = -1
-    return _DMFamily(**env_kwargs)
-
-def ctxdlydm1intseq(**kwargs):
-    env_kwargs = _dlydm_kwargs()
-    env_kwargs.update({'w_mod': (1, 0), 'stim_mod': (True, True)})
-    env_kwargs.update(kwargs)
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
     return _DMFamily(**env_kwargs)
 
 def ctxdlydm2(**kwargs):
@@ -496,15 +452,6 @@ def ctxdlydm2intl(**kwargs):
     env_kwargs['integrate'] = -1
     return _DMFamily(**env_kwargs)
 
-def ctxdlydm2intseq(**kwargs):
-    env_kwargs = _dlydm_kwargs()
-    env_kwargs.update({'w_mod': (0, 1), 'stim_mod': (True, True)})
-    env_kwargs.update(kwargs)
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
-    return _DMFamily(**env_kwargs)
-
 def multidlydm(**kwargs):
     env_kwargs = _dlydm_kwargs()
     env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (True, True)})
@@ -539,15 +486,6 @@ def multidlydmintl(**kwargs):
     env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (True, True)})
     env_kwargs.update(kwargs)
     env_kwargs['integrate'] = -1
-    return _DMFamily(**env_kwargs)
-
-def multidlydmintseq(**kwargs):
-    env_kwargs = _dlydm_kwargs()
-    env_kwargs.update({'w_mod': (1, 1), 'stim_mod': (True, True)})
-    env_kwargs.update(kwargs)
-    env_kwargs['integrate'] = True
-    env_kwargs['timing'] = {'decision': 1000}
-    env_kwargs['seq'] = True
     return _DMFamily(**env_kwargs)
 
 #Delay + match family
@@ -607,17 +545,11 @@ def dmsseqr(**kwargs):
 def dmsseql(**kwargs):
     return _dlymatch(matchto='sample', matchgo=True, seq=-1, timing={'decision': 1000}, **kwargs)
 
-def dmsintseq(**kwargs):
-    return _dlymatch(matchto='sample', matchgo=True, integrate=True, seq=True, timing={'decision': 1000}, **kwargs)
-
 def dnmsseqr(**kwargs):
     return _dlymatch(matchto='sample', matchgo=False, seq=1, timing={'decision': 1000}, **kwargs)
 
 def dnmsseql(**kwargs):
     return _dlymatch(matchto='sample', matchgo=False, seq=-1, timing={'decision': 1000}, **kwargs)
-
-def dnmsintseq(**kwargs):
-    return _dlymatch(matchto='sample', matchgo=False, integrate=True, seq=True, timing={'decision': 1000}, **kwargs)
 
 def dmcseqr(**kwargs):
     return _dlymatch(matchto='category', matchgo=True, seq=1, timing={'decision': 1000}, **kwargs)
@@ -625,14 +557,9 @@ def dmcseqr(**kwargs):
 def dmcseql(**kwargs):
     return _dlymatch(matchto='category', matchgo=True, seq=-1, timing={'decision': 1000}, **kwargs)
 
-def dmcintseq(**kwargs):
-    return _dlymatch(matchto='category', matchgo=True, integrate=True, seq=True, timing={'decision': 1000}, **kwargs)
-
 def dnmcseqr(**kwargs):
     return _dlymatch(matchto='category', matchgo=False, seq=1, timing={'decision': 1000}, **kwargs)
 
 def dnmcseql(**kwargs):
     return _dlymatch(matchto='category', matchgo=False, seq=-1, timing={'decision': 1000}, **kwargs)
 
-def dnmcintseq(**kwargs):
-    return _dlymatch(matchto='category', matchgo=False, integrate=True, seq=True, timing={'decision': 1000}, **kwargs)

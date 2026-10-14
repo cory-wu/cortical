@@ -1,8 +1,9 @@
-"""Mod-Cog task set (Khona, Chandra et al. 2023): Cog20 plus "int" and "seq" variants."""
+"""Mod-Cog (Khona, Chandra et al. 2023): its Cog20 implementation plus "int"/"seq" variants."""
 
 from . import _tasks
 
-BASE_TASKS: tuple[str, ...] = (
+# Cog20 (Yang et al. 2019), in paper order, as implemented by Mod-Cog.
+COG20: tuple[str, ...] = (
     "go", "rtgo", "dlygo", "anti", "rtanti", "dlyanti",
     "dm1", "dm2", "ctxdm1", "ctxdm2", "multidm",
     "dlydm1", "dlydm2", "ctxdlydm1", "ctxdlydm2", "multidlydm",
@@ -10,21 +11,18 @@ BASE_TASKS: tuple[str, ...] = (
 )  # fmt: skip
 
 # Tasks with a delay period, which accept the "int" extension.
-INT_TASKS: tuple[str, ...] = (
+INT_BASE: tuple[str, ...] = (
     "dlygo", "dlyanti", "dlydm1", "dlydm2", "ctxdlydm1", "ctxdlydm2",
     "multidlydm", "dms", "dnms", "dmc", "dnmc",
 )  # fmt: skip
 
 # The 82-task set of the Mod-Cog README, in its order: 20 base, 22 int, 40 seq.
-TASKS: tuple[str, ...] = (
-    BASE_TASKS
-    + tuple(f"{t}int{d}" for t in INT_TASKS for d in "rl")
-    + tuple(f"{t}seq{d}" for d in "rl" for t in BASE_TASKS)
+MODCOG: tuple[str, ...] = (
+    COG20
+    + tuple(f"{t}int{d}" for t in INT_BASE for d in "rl")
+    + tuple(f"{t}seq{d}" for d in "rl" for t in COG20)
 )
 
-# Upstream "int + seq" combinations, defined but not part of the 82-task set.
-INTSEQ_TASKS: tuple[str, ...] = tuple(f"{t}intseq" for t in INT_TASKS)
+FACTORIES = {name: getattr(_tasks, name) for name in MODCOG}
 
-FACTORIES = {name: getattr(_tasks, name) for name in TASKS + INTSEQ_TASKS}
-
-__all__ = ["BASE_TASKS", "FACTORIES", "INTSEQ_TASKS", "INT_TASKS", "TASKS"]
+__all__ = ["COG20", "FACTORIES", "INT_BASE", "MODCOG"]
