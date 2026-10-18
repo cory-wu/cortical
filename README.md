@@ -41,6 +41,10 @@ inputs, labels = ds()
 - Extra keyword arguments, such as `dt` or `timing`, are passed to each task factory.
 - A `seed` makes construction and every trial reproducible.
 
+### Notebooks
+
+`notebooks/01_task_gallery.ipynb` shows one example trial (inputs and targets) for each of the 82 tasks. To run it, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
+
 ### Layout
 
 ```
@@ -52,11 +56,13 @@ src/cogtasks/
     _envs.py        Mod-Cog env classes (vendored)
     _tasks.py       Mod-Cog task factories (vendored)
 tests/              collections, per-task behaviour, multitask/dataset, seeding
+notebooks/          task gallery
 ```
 
 ### The vendored Mod-Cog code
 
-The code comes from `mikailkhona/Mod_Cog` at commit `4110143`, which is CC0 (see `LICENSES/`). The task logic is unchanged. The edits are:
+The code comes from `mikailkhona/Mod_Cog` at commit `4110143`, which is CC0 (see `LICENSES/`). The task logic is unchanged apart from one bug fix. The edits are:
+- **Bug fix: choice 16 wrapped to fixation.** Upstream applied the mod-16 wrap after mapping a choice to its action unit, so choice 16 became action 0 (fixation). As a result, no task ever targeted choice 16, about 1 in 16 trials that should end in a response became fixation-only, and `seq` targets passed through fixation mid-response. The wrap now happens in choice space, which makes these targets differ from Khona et al.'s published runs.
 - **Port to neurogym 2.x.** `step` returns the 5-tuple, `TrialEnv` is imported from `neurogym.core`, and the per-trial `int` delay is drawn from the seeded `self.rng`.
 - **Removed factories.** The 11 unused `*intseq` factories are gone.
 
@@ -65,6 +71,10 @@ Upstream quirks are kept as they are:
 - **`dlyantiseq*`.** These overwrite their `delay` timing override.
 - **`dlygoseq*`.** These are identical to `goseq*`.
 - **`*seq*` timing.** These factories overwrite any `timing` you pass.
+- **`int` offsets are inconsistent across families:**
+  - **`dlygo`/`dlyanti`:** about 2.5 units per 100 ms of delay (ω applied in radians), and *r* is counter-clockwise.
+  - **`dms` family:** 1 unit per 100 ms (ω applied in ring units), and *r* is clockwise.
+  - **`dlydm*` int tasks:** the delay is fixed at 500 ms, so the offset is a constant 5 units.
 
 ### neurogym pitfalls the loader works around
 

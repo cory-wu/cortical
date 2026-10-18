@@ -14,6 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov"]
+notebook = ["ipykernel", "matplotlib", "nbconvert", "nbformat"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cogtasks"]

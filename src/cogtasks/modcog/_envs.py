@@ -2,14 +2,19 @@
 
 Source: https://github.com/mikailkhona/Mod_Cog (mod_cog_tasks.py, commit
 41101436a130fc31deb61e81cc48925c75bed617, CC0-1.0). The task logic is kept
-verbatim. The only edits port it from gym-era neurogym to neurogym 2.x:
+verbatim apart from one bug fix (1); the other edits port it from gym-era
+neurogym to neurogym 2.x:
 
-1. ``_step`` returns the gymnasium 5-tuple ``(ob, reward, terminated,
+1. Bug fix: ``my_set_groundtruth`` wraps the response target modulo the ring
+   in choice space before mapping it to action units. Upstream wrapped after
+   mapping, so choice 16 became action 0 (fixation): no task ever targeted
+   it, and "seq" targets passed through fixation mid-response.
+2. ``_step`` returns the gymnasium 5-tuple ``(ob, reward, terminated,
    truncated, info)`` instead of the gym 4-tuple.
-2. The per-trial "int" delay draw uses ``self.rng`` instead of the global
+3. The per-trial "int" delay draw uses ``self.rng`` instead of the global
    ``np.random``, so ``env.seed(...)`` makes trials reproducible. The sampled
    distribution is unchanged.
-3. ``TrialEnv`` is imported from ``neurogym.core`` (no longer re-exported at
+4. ``TrialEnv`` is imported from ``neurogym.core`` (no longer re-exported at
    the top level), and unused imports (``gym``, ``matplotlib``) are removed.
 
 Upstream quirk kept on purpose: ``_DelayMatch1DResponse`` draws its delay
@@ -69,14 +74,20 @@ class EnvWithAdditions(TrialEnv):
         if not self._gt_built:
             self._init_gt()
 
+        if isinstance(period, str):
+          # Rotate in choice space, then map to action units. Upstream mapped
+          # first, so choice 16 (action 16) wrapped to 0 = fixation.
+          for t in range(int(self.timing['decision'] / self.dt)):
+              choice = np.mod(value + int(seq * t * self.omega * self.dt), self.dim_ring)
+              if where is not None:
+                  choice = self.action_space.name[where][choice]
+              self.gt[self.start_ind['decision'] + t] = choice
+          return
+
         if where is not None:
             # TODO: Only works for Discrete action_space, make it work for Box
             value = self.action_space.name[where][value]
-        if isinstance(period, str):
-          for t in range(int(self.timing['decision'] / self.dt)):
-              self.gt[self.start_ind['decision'] + t] = np.mod(value +int(seq* t * self.omega * self.dt), self.dim_ring)
-
-        elif period is None:
+        if period is None:
             self.gt[:] = value
         else:
             for p in period:

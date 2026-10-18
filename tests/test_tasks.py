@@ -51,3 +51,31 @@ def test_seq_target_rotates_one_unit_per_step(name, step):
     gt = task.gt[task.start_ind["decision"] : task.end_ind["decision"]]
     choices = gt - 1  # choice units start after fixation
     np.testing.assert_array_equal(np.diff(choices) % N_RING, step % N_RING)
+
+
+def _decision_targets(env):
+    task = env.unwrapped
+    return task.gt[task.start_ind["decision"] : task.end_ind["decision"]]
+
+
+@pytest.mark.parametrize(
+    "name", ["go", "dm1", "ctxdlydm2", "dms", "dlygointr", "dnmcintl", "dm2seqr"]
+)
+def test_every_choice_is_reachable_as_a_target(name):
+    """Upstream wrapped choice 16 to fixation (action 0); all 16 must occur."""
+    env = make_task("modcog", name, seed=0)
+    seen = set()
+    for _ in range(400):
+        env.new_trial()
+        seen.update(_decision_targets(env).tolist())
+    assert set(range(1, ACT_DIM)) <= seen
+
+
+@pytest.mark.parametrize("name", [t for t in ALL_TASKS if "seq" in t])
+def test_seq_response_never_passes_through_fixation(name):
+    env = make_task("modcog", name, seed=0)
+    for _ in range(50):
+        env.new_trial()
+        targets = _decision_targets(env)
+        if targets.any():  # a response trial (no-go trials fixate throughout)
+            assert targets.all()
