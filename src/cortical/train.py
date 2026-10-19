@@ -113,7 +113,9 @@ def train(
     eval_set = build_eval_set(n_trials=eval_trials)
 
     if metrics is not None and ckpt_path.exists():
-        ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
+        # Load onto the CPU: load_state_dict copies into the on-device tensors, and
+        # the RNG state must stay a CPU ByteTensor.
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
         torch.set_rng_state(ckpt["rng"])

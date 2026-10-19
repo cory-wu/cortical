@@ -27,12 +27,25 @@ def test_smoke_run_writes_outputs(tmp_path, small_layout):
 
 
 def test_resume_continues_from_checkpoint(tmp_path, small_layout):
-    train("patches", 0, tmp_path, steps=2, _layout=small_layout, **SMALL)
+    first = _metrics(train("patches", 0, tmp_path, steps=2, _layout=small_layout, **SMALL))
     run_dir = train("patches", 0, tmp_path, steps=3, _layout=small_layout, **SMALL)
     metrics = _metrics(run_dir)
     assert [e["step"] for e in metrics["evals"]] == [0, 2, 3]
     assert [step for step, _ in metrics["loss"]] == [1, 2, 3]
+    # Resumed after step 2: earlier entries are untouched, not replayed.
+    assert metrics["loss"][:2] == first["loss"]
+    assert metrics["evals"][:2] == first["evals"]
+    assert torch.load(run_dir / "checkpoint.pt", weights_only=False)["step"] == 3
     assert metrics["done"] is True
+
+
+@pytest.mark.skipif(not torch.backends.mps.is_available(), reason="needs MPS")
+def test_resume_on_mps(tmp_path, small_layout):
+    """Loading with map_location="mps" moves the RNG state off the CPU and crashes."""
+    on_mps = {**SMALL, "device": "mps"}
+    train("patches", 0, tmp_path, steps=2, _layout=small_layout, **on_mps)
+    run_dir = train("patches", 0, tmp_path, steps=3, _layout=small_layout, **on_mps)
+    assert [e["step"] for e in _metrics(run_dir)["evals"]] == [0, 2, 3]
 
 
 def test_completed_run_is_not_retrained(tmp_path, small_layout):
