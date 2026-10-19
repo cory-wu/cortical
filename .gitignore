@@ -10,3 +10,7 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 .superpowers/
+
+# Model weights and checkpoints from training runs
+results/**/*.pt
+results/**/*.tmp

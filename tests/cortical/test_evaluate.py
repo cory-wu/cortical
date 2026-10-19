@@ -1,5 +1,7 @@
 """Fixed evaluation streams and the strict per-trial score."""
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 import torch
@@ -37,7 +39,7 @@ def test_eval_set_shapes_and_boundaries():
         assert len(trials) == 4 and trials[0][0] == 0
         for start, decision_start, end in trials:
             assert start < decision_start < end <= t_max
-        for (_, _, end), (next_start, _, _) in zip(trials, trials[1:], strict=False):
+        for (_, _, end), (next_start, _, _) in pairwise(trials):
             assert end == next_start
 
 
@@ -50,7 +52,10 @@ def test_eval_rule_input_matches_training_order():
 
 
 def test_eval_set_is_reproducible():
-    a, b = build_eval_set(n_trials=3, tasks=("dlygointr",)), build_eval_set(n_trials=3, tasks=("dlygointr",))
+    a, b = (
+        build_eval_set(n_trials=3, tasks=("dlygointr",)),
+        build_eval_set(n_trials=3, tasks=("dlygointr",)),
+    )
     np.testing.assert_array_equal(a.inputs, b.inputs)
     np.testing.assert_array_equal(a.targets, b.targets)
     assert a.trials == b.trials
@@ -78,7 +83,12 @@ def test_padding_does_not_change_score():
 
 
 def test_summarize_families():
-    acc = {t: 0.0 if "seq" in t else 0.5 if t.endswith(("intr", "intl")) else 1.0 for t in ALL_TASKS}
+    def family_acc(task: str) -> float:
+        if "seq" in task:
+            return 0.0
+        return 0.5 if task.endswith(("intr", "intl")) else 1.0
+
+    acc = {t: family_acc(t) for t in ALL_TASKS}
     summary = summarize(acc)
     assert summary["base"] == 1.0 and summary["int"] == 0.5 and summary["seq"] == 0.0
     assert summary["all"] == pytest.approx((20 * 1.0 + 22 * 0.5) / 82)

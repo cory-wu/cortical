@@ -1,4 +1,4 @@
-"""Geometry of an L×L cortical sheet with periodic boundaries (a torus).
+"""Geometry of an LxL cortical sheet with periodic boundaries (a torus).
 
 Unit ``i`` sits at lattice point ``(x, y) = (i % L, i // L)``.
 """

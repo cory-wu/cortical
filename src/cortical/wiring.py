@@ -24,7 +24,7 @@ INPUT_GROUPS: Mapping[str, slice] = MappingProxyType(
 
 Layout = Mapping[str, tuple[tuple[float, float], int]]
 
-# Patches on a 2×2 lattice 25 apart on the 50×50 torus, rings at opposite
+# Patches on a 2x2 lattice 25 apart on the 50x50 torus, rings at opposite
 # corners: group -> (centre (x, y), side length).
 LAYOUT_B: Layout = MappingProxyType(
     {

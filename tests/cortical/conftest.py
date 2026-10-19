@@ -1,4 +1,4 @@
-"""Shared fixtures: a 10×10 sheet with a scaled-down patch layout."""
+"""Shared fixtures: a 10x10 sheet with a scaled-down patch layout."""
 
 import pytest
 
