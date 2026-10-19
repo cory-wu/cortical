@@ -17,7 +17,7 @@ dev = ["pytest", "pytest-cov"]
 notebook = ["ipykernel", "matplotlib", "nbconvert", "nbformat"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cogtasks"]
+packages = ["src/cogtasks", "src/cortical"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
