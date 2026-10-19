@@ -43,7 +43,10 @@ inputs, labels = ds()
 
 ### Notebooks
 
-`notebooks/01_task_gallery.ipynb` shows one example trial (inputs and targets) for each of the 82 tasks. To run it, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
+- `notebooks/01_task_gallery.ipynb` shows one example trial (inputs and targets) for each of the 82 tasks.
+- `notebooks/02_input_patches.ipynb` trains Khona et al.'s locality-masked RNN (50×50 torus, d = 6) on Mod-Cog twice: once with dense input weights, and once with each input group hard-wired to its own patch of the sheet. It compares the two. Training runs separately (`python -m cortical.train --condition {baseline,patches} --seed 0`, about 70 min per run on an M2 Pro GPU). The notebook only loads `results/02_input_patches/`.
+
+To run the notebooks, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
 
 ### Layout
 
@@ -56,7 +59,15 @@ src/cogtasks/
     _envs.py        Mod-Cog env classes (vendored)
     _tasks.py       Mod-Cog task factories (vendored)
 tests/              collections, per-task behaviour, multitask/dataset, seeding
-notebooks/          task gallery
+src/cortical/
+  sheet.py          torus geometry and the recurrent locality mask
+  wiring.py         input groups, patch layouts and the input mask
+  model.py          masked LM-RNN (ReLU nn.RNN + dense readout)
+  evaluate.py       fixed evaluation streams and strict per-trial accuracy
+  train.py          training CLI with checkpoint/resume
+notebooks/          task gallery, input-patch experiment
+results/            run metrics (weights are git-ignored)
+docs/superpowers/   design specs and implementation plans
 ```
 
 ### The vendored Mod-Cog code
