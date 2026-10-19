@@ -9,3 +9,4 @@ htmlcov/
 .DS_Store
 .ruff_cache/
 .mypy_cache/
+.superpowers/
