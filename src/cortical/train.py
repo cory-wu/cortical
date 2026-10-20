@@ -44,6 +44,9 @@ DEFAULT_OUT = Path("results/02_input_patches")
 
 
 def pick_device() -> str:
+    """The fastest available device: an NVIDIA GPU, then Apple's GPU, then the CPU."""
+    if torch.cuda.is_available():
+        return "cuda"
     return "mps" if torch.backends.mps.is_available() else "cpu"
 
 
@@ -189,9 +192,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--steps", type=int, default=10_000)
     parser.add_argument("--d", type=float, default=6, help="recurrent locality radius")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--device", default=None, help="e.g. cuda, cuda:1, mps, cpu (default: auto-pick)"
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    train(args.condition, args.seed, args.out, steps=args.steps, d=args.d)
+    train(args.condition, args.seed, args.out, steps=args.steps, d=args.d, device=args.device)
 
 
 if __name__ == "__main__":

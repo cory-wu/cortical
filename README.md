@@ -46,6 +46,16 @@ inputs, labels = ds()
 - `notebooks/01_task_gallery.ipynb` shows one example trial (inputs and targets) for each of the 82 tasks.
 - `notebooks/02_input_patches.ipynb` trains Khona et al.'s locality-masked RNN (50×50 torus, d = 6) on Mod-Cog twice: once with dense input weights, and once with each input group hard-wired to its own patch of the sheet. It compares the two. Training runs separately (`python -m cortical.train --condition {baseline,patches} --seed 0`, about 70 min per run on an M2 Pro GPU). The notebook only loads `results/02_input_patches/`.
 
+### Training on a GPU
+
+`python -m cortical.train` picks a device automatically: an NVIDIA GPU (CUDA) first, then Apple's GPU (MPS), then the CPU. `--device` overrides the choice, e.g. `--device cuda:1` or `--device cpu`. Checkpoints resume across devices. To check speed on a new machine, run a short job and read the step timestamps in the log:
+
+```bash
+python -m cortical.train --condition baseline --steps 50 --out /tmp/speedcheck
+```
+
+For reference, an M2 Pro takes about 0.4 s per step (MPS) and 2.5 s per step (CPU). The workload is bound by memory bandwidth: with batch size 4, every time step re-reads the 2500×2500 recurrent matrix.
+
 To run the notebooks, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
 
 ### Layout

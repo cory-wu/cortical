@@ -60,9 +60,33 @@ def test_patches_requires_full_sheet(tmp_path):
         train("patches", 0, tmp_path, steps=1, **SMALL)
 
 
+def _devices(monkeypatch, cuda: bool, mps: bool) -> None:
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
+    monkeypatch.setattr(torch.backends.mps, "is_available", lambda: mps)
+
+
+def test_pick_device_prefers_cuda(monkeypatch):
+    _devices(monkeypatch, cuda=True, mps=True)
+    assert pick_device() == "cuda"
+
+
+def test_pick_device_uses_mps_without_cuda(monkeypatch):
+    _devices(monkeypatch, cuda=False, mps=True)
+    assert pick_device() == "mps"
+
+
 def test_pick_device_falls_back_to_cpu(monkeypatch):
-    monkeypatch.setattr(torch.backends.mps, "is_available", lambda: False)
+    _devices(monkeypatch, cuda=False, mps=False)
     assert pick_device() == "cpu"
+
+
+def test_cli_passes_device_through(tmp_path, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(train_mod, "train", lambda *a, **kw: seen.update(kw))
+    main(["--condition", "baseline", "--device", "cuda:1", "--out", str(tmp_path)])
+    assert seen["device"] == "cuda:1"
+    main(["--condition", "baseline", "--out", str(tmp_path)])
+    assert seen["device"] is None  # auto-pick
 
 
 def test_resume_refuses_a_different_radius(tmp_path, small_layout):
