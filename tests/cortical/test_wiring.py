@@ -5,7 +5,7 @@ from itertools import combinations
 import numpy as np
 
 from cortical.sheet import square_patch
-from cortical.wiring import INPUT_GROUPS, LAYOUT_B, N_INPUT, input_mask
+from cortical.wiring import INPUT_GROUPS, LAYOUT_B, LAYOUT_B_LARGE, N_INPUT, input_mask
 
 L = 50
 
@@ -44,3 +44,25 @@ def test_dense_mask():
     mask = input_mask(L, None)
     assert mask.shape == (115, 2500)
     assert mask.all()
+
+
+def test_layout_b_large_patch_sizes():
+    patches = {g: square_patch(L, c, s) for g, (c, s) in LAYOUT_B_LARGE.items()}
+    assert {g: len(p) for g, p in patches.items()} == {
+        "fixation": 100,
+        "ring1": 324,
+        "ring2": 324,
+        "rule": 576,
+    }
+    for a, b in combinations(patches, 2):
+        assert not set(patches[a]) & set(patches[b])
+
+
+def test_layout_b_large_keeps_layout_b_centres():
+    assert {g: c for g, (c, _) in LAYOUT_B_LARGE.items()} == {
+        g: c for g, (c, _) in LAYOUT_B.items()
+    }
+
+
+def test_layout_b_large_mask_nonzeros():
+    assert input_mask(L, LAYOUT_B_LARGE).sum() == 57_700

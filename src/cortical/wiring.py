@@ -36,6 +36,18 @@ LAYOUT_B: Layout = MappingProxyType(
 )
 
 
+# Layout B scaled up about 1.5x per side (sides kept even, since the centres are
+# half-integers): 1,324 units, 53% of the sheet.
+LAYOUT_B_LARGE: Layout = MappingProxyType(
+    {
+        "fixation": ((12.5, 37.5), 10),
+        "ring1": ((12.5, 12.5), 18),
+        "ring2": ((37.5, 37.5), 18),
+        "rule": ((37.5, 12.5), 24),
+    }
+)
+
+
 def input_mask(L: int, layout: Layout | None) -> np.ndarray:
     """(N_INPUT, L²) mask: each group's inputs reach only its patch; ``None`` is dense."""
     if layout is None:

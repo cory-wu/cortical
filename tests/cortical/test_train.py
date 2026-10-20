@@ -65,11 +65,24 @@ def test_pick_device_falls_back_to_cpu(monkeypatch):
     assert pick_device() == "cpu"
 
 
+def test_resume_refuses_a_different_radius(tmp_path, small_layout):
+    train("patches", 0, tmp_path, steps=2, _layout=small_layout, **SMALL)
+    with pytest.raises(ValueError, match="d"):
+        train("patches", 0, tmp_path, steps=3, _layout=small_layout, **{**SMALL, "d": 3})
+
+
+def test_cli_passes_radius_through(tmp_path, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(train_mod, "train", lambda *a, **kw: seen.update(kw))
+    main(["--condition", "patches_large", "--d", "10", "--out", str(tmp_path)])
+    assert seen["d"] == 10
+
+
 def test_cli_rejects_unknown_condition():
     with pytest.raises(SystemExit):
         main(["--condition", "nope"])
 
 
-def test_conditions_are_baseline_and_patches():
-    assert set(train_mod.CONDITIONS) == {"baseline", "patches"}
+def test_conditions():
+    assert set(train_mod.CONDITIONS) == {"baseline", "patches", "patches_large"}
     assert train_mod.CONDITIONS["baseline"] is None

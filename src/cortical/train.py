@@ -26,11 +26,15 @@ from cogtasks import make_dataset
 
 from .evaluate import build_eval_set, score, summarize
 from .model import MaskedRNN
-from .wiring import LAYOUT_B, Layout, input_mask
+from .wiring import LAYOUT_B, LAYOUT_B_LARGE, Layout, input_mask
 
 log = logging.getLogger(__name__)
 
-CONDITIONS: Mapping[str, Layout | None] = {"baseline": None, "patches": LAYOUT_B}
+CONDITIONS: Mapping[str, Layout | None] = {
+    "baseline": None,
+    "patches": LAYOUT_B,
+    "patches_large": LAYOUT_B_LARGE,
+}
 BATCH_SIZE = 4
 SEQ_LEN = 350
 LR = 1e-3
@@ -70,6 +74,16 @@ def _load_metrics(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text()) if path.exists() else None
 
 
+def _check_same_run(metrics: Mapping[str, Any], condition: str, L: int, d: float) -> None:
+    """Refuse to continue a run directory that was trained with other settings."""
+    requested = {"condition": condition, "L": L, "d": d}
+    saved = {key: metrics["config"][key] for key in requested}
+    if saved != requested:
+        raise ValueError(
+            f"Run directory holds a run with {saved}, not {requested}; use another --out."
+        )
+
+
 def _is_complete(metrics: Mapping[str, Any] | None, steps: int) -> bool:
     return bool(metrics and metrics["done"] and metrics["evals"][-1]["step"] >= steps)
 
@@ -103,6 +117,8 @@ def train(
     metrics_path, ckpt_path = run_dir / "metrics.json", run_dir / "checkpoint.pt"
 
     metrics = _load_metrics(metrics_path)
+    if metrics is not None:
+        _check_same_run(metrics, condition, L, d)
     if _is_complete(metrics, steps):
         log.info("%s is complete; nothing to do.", run_dir)
         return run_dir
@@ -171,10 +187,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--condition", required=True, choices=sorted(CONDITIONS))
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=10_000)
+    parser.add_argument("--d", type=float, default=6, help="recurrent locality radius")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    train(args.condition, args.seed, args.out, steps=args.steps)
+    train(args.condition, args.seed, args.out, steps=args.steps, d=args.d)
 
 
 if __name__ == "__main__":
