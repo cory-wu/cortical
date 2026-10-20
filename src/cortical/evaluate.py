@@ -5,11 +5,12 @@ task as a stream too: ``n_trials`` back to back from a zero state, the hidden
 state carrying over between trials, each trial scored on its own.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import torch
+from neurogym.core import TrialEnv
 from torch import nn
 
 from cogtasks import list_tasks, make_task
@@ -27,20 +28,33 @@ class EvalSet:
     trials: tuple[tuple[tuple[int, int, int], ...], ...]  # per task: (start, decision_start, end)
 
 
-def _task_stream(name: str, k: int, n_trials: int, seed: int):
-    """Inputs, targets and trial bounds for ``n_trials`` of task ``name``, rule unit ``k``."""
+def iter_trials(
+    name: str, k: int, n_trials: int, seed: int
+) -> Iterator[tuple[np.ndarray, np.ndarray, TrialEnv, int]]:
+    """Yield ``(inputs with rule unit k, targets, task, i_env)`` for each trial of ``name``.
+
+    ``task`` is the env that generated the trial; read its state before the next
+    trial replaces it. ``i_env`` is the sub-env index (the stimulus modality for
+    two-modality tasks), or 0 for tasks without one.
+    """
     env = make_task("modcog", name, seed=seed)
-    obs, gts, bounds, t = [], [], [], 0
     for _ in range(n_trials):
         env.new_trial()
         task = env.unwrapped
         ob = np.zeros((len(task.gt), N_INPUT), dtype=np.float32)
         ob[:, :N_OBS] = task.ob
         ob[:, N_OBS + k] = 1.0
+        yield ob, task.gt.astype(np.int64), task, getattr(env, "i_env", 0)
+
+
+def _task_stream(name: str, k: int, n_trials: int, seed: int):
+    """Inputs, targets and trial bounds for ``n_trials`` of task ``name``, rule unit ``k``."""
+    obs, gts, bounds, t = [], [], [], 0
+    for ob, gt, task, _ in iter_trials(name, k, n_trials, seed):
         obs.append(ob)
-        gts.append(task.gt.astype(np.int64))
-        bounds.append((t, t + task.start_ind["decision"], t + len(task.gt)))
-        t += len(task.gt)
+        gts.append(gt)
+        bounds.append((t, t + task.start_ind["decision"], t + len(gt)))
+        t += len(gt)
     return np.concatenate(obs), np.concatenate(gts), tuple(bounds)
 
 

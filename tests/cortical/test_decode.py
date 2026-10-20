@@ -5,7 +5,10 @@ import pytest
 
 from cogtasks import make_task
 from cogtasks.modcog._envs import _DelayMatch1DResponse, _gaussianbump, _Reach
-from cortical.decode import SINGLE_BUMP_TASKS, stimulus_angle
+from cortical.decode import SINGLE_BUMP_TASKS, collect, stimulus_angle
+from cortical.evaluate import iter_trials
+from cortical.model import MaskedRNN
+from cortical.wiring import input_mask
 
 THETA = 2 * np.pi * np.arange(16) / 16
 
@@ -28,3 +31,83 @@ def test_stimulus_angle_recovers_bump_centre(centre):
     assert _circ_err(stimulus_angle(bump), centre) < np.deg2rad(1)
     assert _circ_err(stimulus_angle(np.tile(bump, (5, 1))), centre) < np.deg2rad(1)
     assert 0 <= stimulus_angle(bump) < 2 * np.pi
+
+
+SMALL_TASKS = ("go", "rtanti", "dms", "dlygointr")
+N_PER_TASK = 8
+RINGS = {1: slice(1, 17), 2: slice(17, 33)}
+
+
+@pytest.fixture(scope="module")
+def trialset():
+    model = MaskedRNN(10, 2, input_mask(10, None))
+    return collect(
+        model, units=np.arange(0, 100, 7), n_trials=N_PER_TASK, seed=11, tasks=SMALL_TASKS
+    )
+
+
+def _stream_trials(seed=11):
+    """Re-generate the same trials collect() saw, with their onsets, ends and records."""
+    from cogtasks import list_tasks
+
+    order = list_tasks("modcog")
+    out = []
+    for name in SMALL_TASKS:
+        k = order.index(name)
+        for ob, _gt, task, i_env in iter_trials(name, k, N_PER_TASK, seed + k):
+            first = next(p for p in ("sample", "stimulus", "decision") if p in task.start_ind)
+            onset, stop = task.start_ind[first], task.end_ind[first]
+            out.append((name, ob, onset, stop, dict(task.trial), dict(task.timing), i_env))
+    return out
+
+
+def test_trialset_shapes(trialset):
+    n = len(SMALL_TASKS) * N_PER_TASK
+    assert trialset.activity.shape == (n, 23, 15)
+    assert trialset.valid.shape == (n, 23)
+    assert trialset.valid[:, 2].all()  # tau = 0 is always inside the trial
+    assert len(trialset.task) == len(trialset.modality) == len(trialset.angle) == n
+
+
+def test_onset_is_first_stimulus_step(trialset):
+    for (_, ob, onset, _, _, _, i_env), modality in zip(
+        _stream_trials(), trialset.modality, strict=True
+    ):
+        ring = ob[:, RINGS[modality]]
+        assert ring[onset].sum() > 0
+        assert ring[onset - 1].sum() == 0
+        assert modality == i_env + 1
+
+
+def test_modality_matches_stimulated_ring(trialset):
+    for (_, ob, onset, *_), modality in zip(_stream_trials(), trialset.modality, strict=True):
+        other = RINGS[3 - modality]
+        assert ob[onset, RINGS[modality]].sum() > 0
+        assert ob[onset, other].sum() == 0
+
+
+def test_angle_matches_trial_records(trialset):
+    for (name, _, _, _, trial, timing, _), angle in zip(
+        _stream_trials(), trialset.angle, strict=True
+    ):
+        if name == "dms":
+            expected = trial["sample_theta"]
+        else:
+            shift = int(trial["integrate"]) * 0.01 * timing["delay"] + int(trial["anti"]) * np.pi
+            expected = THETA[trial["ground_truth"]] + shift
+        assert _circ_err(angle, np.mod(expected, 2 * np.pi)) < np.deg2rad(1), name
+
+
+def test_angle_agrees_with_input_circular_mean(trialset):
+    """Independent check on the record lookup: noise-free bumps match exactly; the
+    match tasks' sample carries input noise, so they only need to be close."""
+    for (name, ob, onset, stop, *_), angle, modality in zip(
+        _stream_trials(), trialset.angle, trialset.modality, strict=True
+    ):
+        tolerance = 10 if name == "dms" else 1
+        observed = stimulus_angle(ob[onset:stop, RINGS[modality]])
+        assert _circ_err(observed, angle) < np.deg2rad(tolerance), name
+
+
+def test_both_modalities_occur(trialset):
+    assert set(trialset.modality.tolist()) == {1, 2}
