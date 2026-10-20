@@ -10,6 +10,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
+from sklearn.linear_model import RidgeCV
+from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from cogtasks import list_tasks, make_task
 from cogtasks.modcog._envs import _DelayMatch1DResponse, _Reach
@@ -151,3 +155,86 @@ def regions(L: int, layout: Layout) -> dict[str, np.ndarray]:
         "ring1_near": np.sort(np.array(near)),
         "matched": np.sort(np.array(matched)),
     }
+
+
+ALPHAS = np.logspace(-2, 4, 13)
+HIT_TOLERANCE = np.pi / 8  # one ring unit (22.5°): chance is 1/8
+
+
+def circular_error(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Absolute angular difference, in [0, π]."""
+    diff = np.abs(np.mod(a - b, 2 * np.pi))
+    return np.minimum(diff, 2 * np.pi - diff)
+
+
+@dataclass(frozen=True)
+class DecodeResult:
+    tau: np.ndarray  # (steps,) step relative to stimulus onset
+    accuracy: np.ndarray  # (steps,) fraction of held-out trials within HIT_TOLERANCE
+    median_error: np.ndarray  # (steps,) radians
+    null95: np.ndarray  # (steps,) 95th percentile of accuracy with shuffled angles
+    n_trials: np.ndarray  # (steps,) valid trials used
+    predicted: np.ndarray  # (n, steps) held-out decoded angle; NaN where invalid
+
+
+def _cross_validated(
+    features: np.ndarray, angles: np.ndarray, groups: np.ndarray, n_splits: int, seed: int
+) -> np.ndarray:
+    """Held-out decoded angles; scaling and ridge strength are fit on training folds only."""
+    counts = np.unique(groups, return_counts=True)[1]
+    splitter = (
+        StratifiedKFold(n_splits, shuffle=True, random_state=seed)
+        if counts.min() >= n_splits
+        else KFold(n_splits, shuffle=True, random_state=seed)
+    )
+    targets = np.stack([np.cos(angles), np.sin(angles)], axis=1)
+    decoded = np.empty(len(angles))
+    for train, test in splitter.split(features, groups):
+        model = make_pipeline(StandardScaler(), RidgeCV(alphas=ALPHAS))
+        model.fit(features[train], targets[train])
+        cos, sin = model.predict(features[test]).T
+        decoded[test] = np.mod(np.arctan2(sin, cos), 2 * np.pi)
+    return decoded
+
+
+def decode_over_time(
+    activity: np.ndarray,
+    angles: np.ndarray,
+    valid: np.ndarray,
+    groups: np.ndarray,
+    n_splits: int = 5,
+    n_shuffles: int = 20,
+    seed: int = 0,
+) -> DecodeResult:
+    """Cross-validated linear decoding of ``angles`` from ``activity`` at each time step.
+
+    ``activity`` is (n_trials, steps, units). One decoder per step, trained and
+    tested only on trials valid at that step; folds are stratified by ``groups``.
+    """
+    rng = np.random.default_rng(seed)
+    n, steps, _ = activity.shape
+    predicted = np.full((n, steps), np.nan)
+    accuracy, median_error, null95, n_trials = (np.empty(steps) for _ in range(4))
+    for step in range(steps):
+        rows = np.flatnonzero(valid[:, step])
+        x, y, g = activity[rows, step], angles[rows], groups[rows]
+        decoded = _cross_validated(x, y, g, n_splits, seed)
+        errors = circular_error(decoded, y)
+        predicted[rows, step] = decoded
+        accuracy[step] = np.mean(errors <= HIT_TOLERANCE)
+        median_error[step] = np.median(errors)
+        n_trials[step] = len(rows)
+        null = []
+        for _ in range(n_shuffles):
+            shuffled = rng.permutation(y)
+            null_errors = circular_error(_cross_validated(x, shuffled, g, n_splits, seed), shuffled)
+            null.append(np.mean(null_errors <= HIT_TOLERANCE))
+        null95[step] = np.percentile(null, 95) if null else np.nan
+    return DecodeResult(
+        tau=np.arange(WINDOW[0], WINDOW[0] + steps),
+        accuracy=accuracy,
+        median_error=median_error,
+        null95=null95,
+        n_trials=n_trials.astype(int),
+        predicted=predicted,
+    )

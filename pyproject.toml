@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov"]
 notebook = ["ipykernel", "matplotlib", "nbconvert", "nbformat"]
+analysis = ["scikit-learn"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cogtasks", "src/cortical"]

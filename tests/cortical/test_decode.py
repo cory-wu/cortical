@@ -5,7 +5,14 @@ import pytest
 
 from cogtasks import make_task
 from cogtasks.modcog._envs import _DelayMatch1DResponse, _gaussianbump, _Reach
-from cortical.decode import SINGLE_BUMP_TASKS, collect, regions, stimulus_angle
+from cortical.decode import (
+    SINGLE_BUMP_TASKS,
+    circular_error,
+    collect,
+    decode_over_time,
+    regions,
+    stimulus_angle,
+)
 from cortical.evaluate import iter_trials
 from cortical.model import MaskedRNN
 from cortical.sheet import square_patch, torus_distance
@@ -142,3 +149,48 @@ def test_matched_region_distances(region_units):
     to_ring2 = torus_distance(50)[:, region_units["ring2"]].min(axis=1)
     # Sorted distances pair up within the 0.5 matching tolerance.
     assert np.abs(np.sort(to_ring2[matched]) - np.sort(to_ring2[near])).max() <= 0.5
+
+
+def _synthetic(n=400, units=50, steps=23, encoded_from=5, seed=0):
+    """Activity that linearly encodes (cos θ, sin θ) from step `encoded_from` onward."""
+    rng = np.random.default_rng(seed)
+    angles = rng.uniform(0, 2 * np.pi, n)
+    weights = rng.normal(size=(2, units))
+    activity = 0.3 * rng.normal(size=(n, steps, units))
+    signal = np.stack([np.cos(angles), np.sin(angles)], axis=1) @ weights
+    activity[:, encoded_from:] += signal[:, None, :]
+    groups = np.repeat(np.arange(4), n // 4)
+    return activity, angles, np.ones((n, steps), dtype=bool), groups
+
+
+@pytest.fixture(scope="module")
+def synthetic_result():
+    activity, angles, valid, groups = _synthetic()
+    return decode_over_time(activity, angles, valid, groups, n_shuffles=5, seed=1)
+
+
+def test_recovers_encoded_angle(synthetic_result):
+    assert (synthetic_result.accuracy[5:] >= 0.9).all()
+
+
+def test_chance_without_encoding(synthetic_result):
+    assert (synthetic_result.accuracy[:5] <= 0.25).all()
+
+
+def test_null_stays_near_chance(synthetic_result):
+    assert (synthetic_result.null95 <= 0.25).all()
+
+
+def test_invalid_steps_excluded():
+    activity, angles, valid, groups = _synthetic()
+    valid[::2, 15:] = False
+    activity[~valid] = 0.0
+    result = decode_over_time(activity, angles, valid, groups, n_shuffles=2, seed=1)
+    assert (result.n_trials[15:] == 200).all() and (result.n_trials[:15] == 400).all()
+    assert (result.accuracy[15:] >= 0.9).all()
+    assert (np.isnan(result.predicted) == ~valid).all()
+    assert result.tau.tolist() == list(range(-2, 21))
+
+
+def test_circular_error_wraps():
+    assert np.isclose(circular_error(np.array([0.1]), np.array([2 * np.pi - 0.1]))[0], 0.2)
