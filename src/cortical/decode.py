@@ -72,6 +72,8 @@ class TrialSet:
     activity: np.ndarray  # (n, window, len(units)) float32, zero where invalid
     valid: np.ndarray  # (n, window) bool: the step lies inside the trial
     units: np.ndarray  # recorded unit indices
+    test_tau: np.ndarray  # (n,) steps from onset to the test stimulus; NaN without one
+    decision_tau: np.ndarray  # (n,) steps from onset to the response period
 
 
 def collect(
@@ -87,12 +89,15 @@ def collect(
     lo, hi = WINDOW
     offsets = np.arange(lo, hi + 1)
     names, modalities, angles, windows, valids = [], [], [], [], []
+    test_taus, decision_taus = [], []
     for name in tasks:
         k = order.index(name)
         obs, onsets, ends, t = [], [], [], 0
         for ob, _, task, i_env in iter_trials(name, k, n_trials, seed + k):
             period = next(p for p in _ONSET_PERIODS if p in task.start_ind)
             start = task.start_ind[period]
+            test_taus.append(task.start_ind["test"] - start if "test" in task.start_ind else np.nan)
+            decision_taus.append(task.start_ind["decision"] - start)
             modality = i_env + 1
             names.append(name)
             modalities.append(modality)
@@ -119,6 +124,8 @@ def collect(
         activity=np.stack(windows),
         valid=np.stack(valids),
         units=np.asarray(units),
+        test_tau=np.array(test_taus, dtype=float),
+        decision_tau=np.array(decision_taus, dtype=float),
     )
 
 

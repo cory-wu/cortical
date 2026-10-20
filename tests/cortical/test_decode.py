@@ -117,6 +117,26 @@ def test_angle_agrees_with_input_circular_mean(trialset):
         assert _circ_err(observed, angle) < np.deg2rad(tolerance), name
 
 
+def test_period_onsets_relative_to_stimulus(trialset):
+    """test_tau / decision_tau count steps from stimulus onset to the test and decision periods."""
+    from cogtasks import list_tasks
+
+    expected = []
+    order = list_tasks("modcog")
+    for name in SMALL_TASKS:
+        k = order.index(name)
+        for _ob, _gt, task, _ in iter_trials(name, k, N_PER_TASK, 11 + k):
+            first = next(p for p in ("sample", "stimulus", "decision") if p in task.start_ind)
+            onset = task.start_ind[first]
+            test = task.start_ind["test"] - onset if "test" in task.start_ind else np.nan
+            expected.append((test, task.start_ind["decision"] - onset))
+    test_tau, decision_tau = np.array(expected).T
+    np.testing.assert_array_equal(trialset.test_tau, test_tau)
+    np.testing.assert_array_equal(trialset.decision_tau, decision_tau)
+    assert np.isnan(trialset.test_tau[trialset.task != "dms"]).all()
+    assert (trialset.decision_tau[trialset.task == "rtanti"] == 0).all()
+
+
 def test_both_modalities_occur(trialset):
     assert set(trialset.modality.tolist()) == {1, 2}
 
