@@ -56,6 +56,8 @@ python -m cortical.train --condition baseline --steps 50 --out /tmp/speedcheck
 
 For reference, an M2 Pro takes about 0.4 s per step (MPS) and 2.5 s per step (CPU). The workload is bound by memory bandwidth: with batch size 4, every time step re-reads the 2500×2500 recurrent matrix.
 
+- `notebooks/03_input_patches_d10.ipynb` repeats 02 at d = 10 with larger patches (`patches_large`, 53% of the sheet). The two runs were trained on an RTX 4090 (~6½ min each): `--condition {baseline,patches_large} --d 10 --out results/03_input_patches_d10`.
+
 To run the notebooks, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
 
 ### Layout
