@@ -16,6 +16,8 @@ from cogtasks.modcog._envs import _DelayMatch1DResponse, _Reach
 
 from .evaluate import iter_trials
 from .model import MaskedRNN
+from .sheet import square_patch, torus_distance
+from .wiring import Layout
 
 N_RING = 16
 _RING_ANGLES = 2 * np.pi * np.arange(N_RING) / N_RING
@@ -114,3 +116,38 @@ def collect(
         valid=np.stack(valids),
         units=np.asarray(units),
     )
+
+
+MATCH_TOLERANCE = 0.5  # max |distance difference| for a matched pair
+
+
+def regions(L: int, layout: Layout) -> dict[str, np.ndarray]:
+    """Unit indices of the decoding regions.
+
+    - ``ring1`` and ``ring2``: the ring patches. ``ring1_self`` is ``ring1``, used on ring-1 trials.
+    - ``ring1_near`` and ``matched``: a paired control at equal distance from the ring-2
+      patch. Ring 1 is the region farthest from ring 2, so only its nearer units have
+      input-free partners at the same distance. ``ring1_near`` is the ring-1 units that
+      found a partner within ``MATCH_TOLERANCE``, and ``matched`` is those partners.
+    """
+    patches = {group: square_patch(L, centre, size) for group, (centre, size) in layout.items()}
+    ring1, ring2 = patches["ring1"], patches["ring2"]
+    to_ring2 = torus_distance(L)[:, ring2].min(axis=1)
+    available = np.ones(L * L, dtype=bool)
+    available[np.concatenate(list(patches.values()))] = False
+    near, matched = [], []
+    for unit in ring1[np.argsort(to_ring2[ring1], kind="stable")]:
+        candidates = np.flatnonzero(available)
+        gaps = np.abs(to_ring2[candidates] - to_ring2[unit])
+        best = int(np.argmin(gaps))  # first minimum: the lowest unit index
+        if gaps[best] <= MATCH_TOLERANCE:
+            near.append(unit)
+            matched.append(candidates[best])
+            available[candidates[best]] = False
+    return {
+        "ring1": ring1,
+        "ring2": ring2,
+        "ring1_self": ring1.copy(),
+        "ring1_near": np.sort(np.array(near)),
+        "matched": np.sort(np.array(matched)),
+    }

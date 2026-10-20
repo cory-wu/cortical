@@ -5,10 +5,11 @@ import pytest
 
 from cogtasks import make_task
 from cogtasks.modcog._envs import _DelayMatch1DResponse, _gaussianbump, _Reach
-from cortical.decode import SINGLE_BUMP_TASKS, collect, stimulus_angle
+from cortical.decode import SINGLE_BUMP_TASKS, collect, regions, stimulus_angle
 from cortical.evaluate import iter_trials
 from cortical.model import MaskedRNN
-from cortical.wiring import input_mask
+from cortical.sheet import square_patch, torus_distance
+from cortical.wiring import LAYOUT_B_LARGE, input_mask
 
 THETA = 2 * np.pi * np.arange(16) / 16
 
@@ -111,3 +112,33 @@ def test_angle_agrees_with_input_circular_mean(trialset):
 
 def test_both_modalities_occur(trialset):
     assert set(trialset.modality.tolist()) == {1, 2}
+
+
+@pytest.fixture(scope="module")
+def region_units():
+    return regions(50, LAYOUT_B_LARGE)
+
+
+def test_region_sizes(region_units):
+    assert set(region_units) == {"ring1", "ring2", "ring1_self", "ring1_near", "matched"}
+    for name in ("ring1", "ring2", "ring1_self"):
+        assert len(region_units[name]) == 324
+    assert len(region_units["matched"]) == len(region_units["ring1_near"]) >= 100
+
+
+def test_patches_match_layout(region_units):
+    for ring in ("ring1", "ring2"):
+        np.testing.assert_array_equal(region_units[ring], square_patch(50, *LAYOUT_B_LARGE[ring]))
+    np.testing.assert_array_equal(region_units["ring1_self"], region_units["ring1"])
+    assert set(region_units["ring1_near"]) <= set(region_units["ring1"])
+
+
+def test_matched_region_distances(region_units):
+    """matched is input-free, unique, and pairs with ring1_near at equal distance from ring 2."""
+    matched, near = region_units["matched"], region_units["ring1_near"]
+    in_patches = np.concatenate([square_patch(50, c, s) for c, s in LAYOUT_B_LARGE.values()])
+    assert not set(matched) & set(in_patches)
+    assert len(set(matched)) == len(matched)
+    to_ring2 = torus_distance(50)[:, region_units["ring2"]].min(axis=1)
+    # Sorted distances pair up within the 0.5 matching tolerance.
+    assert np.abs(np.sort(to_ring2[matched]) - np.sort(to_ring2[near])).max() <= 0.5
