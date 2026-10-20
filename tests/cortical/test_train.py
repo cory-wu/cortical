@@ -98,7 +98,7 @@ def test_resume_refuses_a_different_radius(tmp_path, small_layout):
 def test_cli_passes_radius_through(tmp_path, monkeypatch):
     seen = {}
     monkeypatch.setattr(train_mod, "train", lambda *a, **kw: seen.update(kw))
-    main(["--condition", "patches_large", "--d", "10", "--out", str(tmp_path)])
+    main(["--condition", "patched_wiring", "--d", "10", "--out", str(tmp_path)])
     assert seen["d"] == 10
 
 
@@ -108,5 +108,5 @@ def test_cli_rejects_unknown_condition():
 
 
 def test_conditions():
-    assert set(train_mod.CONDITIONS) == {"baseline", "patches", "patches_large"}
+    assert set(train_mod.CONDITIONS) == {"baseline", "patches", "patched_wiring"}
     assert train_mod.CONDITIONS["baseline"] is None

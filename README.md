@@ -44,7 +44,7 @@ inputs, labels = ds()
 ### Notebooks
 
 - `notebooks/01_task_gallery.ipynb` shows one example trial (inputs and targets) for each of the 82 tasks.
-- `notebooks/02_input_patches.ipynb` trains Khona et al.'s locality-masked RNN (50×50 torus, d = 10) on Mod-Cog twice: once with dense input weights, and once with each input group strictly wired to its own patch of the sheet (`patches_large`, 53% of the sheet). It compares the two. Training runs separately (`python -m cortical.train --condition {baseline,patches_large} --seed 0`, about 6½ min per run on an RTX 4090, about 70 min on an M2 Pro). The notebook only loads `results/02_input_patches/`.
+- `notebooks/02_input_patches.ipynb` trains Khona et al.'s locality-masked RNN (50×50 torus, d = 10) on Mod-Cog twice: once with dense input weights, and once with each input group strictly wired to its own patch of the sheet (`patched_wiring`, 53% of the sheet). It compares the two. Training runs separately (`python -m cortical.train --condition {baseline,patched_wiring} --seed 0`, about 6½ min per run on an RTX 4090, about 70 min on an M2 Pro). The notebook only loads `results/02_input_patches/`.
 
 ### Training on a GPU
 

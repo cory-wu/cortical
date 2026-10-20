@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 CONDITIONS: Mapping[str, Layout | None] = {
     "baseline": None,
     "patches": LAYOUT_B,
-    "patches_large": LAYOUT_B_LARGE,
+    "patched_wiring": LAYOUT_B_LARGE,
 }
 BATCH_SIZE = 4
 SEQ_LEN = 350
