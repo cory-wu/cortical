@@ -106,7 +106,7 @@ def train(
     out: Path,
     steps: int = 10_000,
     L: int = 50,
-    d: float = 6,
+    d: float = 10,
     eval_every: int = 500,
     eval_trials: int = 32,
     device: str | None = None,
@@ -190,7 +190,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--condition", required=True, choices=sorted(CONDITIONS))
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=10_000)
-    parser.add_argument("--d", type=float, default=6, help="recurrent locality radius")
+    parser.add_argument("--d", type=float, default=10, help="recurrent locality radius")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument(
         "--device", default=None, help="e.g. cuda, cuda:1, mps, cpu (default: auto-pick)"

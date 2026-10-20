@@ -1,7 +1,7 @@
 # Notebook 02: Khona LM-RNN with inputs wired to cortical patches
 
 Date: 2026-10-19
-Status: approved in conversation; awaiting review of this written spec
+Status: implemented, then **superseded** (2026-10-20). The d = 6 / layout B runs described here were removed from the repo (they are in the git history, commit `ac521d4`). Notebook 02 now holds the follow-up: d = 10 with `patches_large` (53% coverage).
 
 ## Goal
 
