@@ -57,7 +57,9 @@ python -m cortical.train --condition baseline --steps 50 --out /tmp/speedcheck
 For reference, an M2 Pro takes about 0.4 s per step (MPS) and 2.5 s per step (CPU). The workload is bound by memory bandwidth: with batch size 4, every time step re-reads the 2500×2500 recurrent matrix.
 
 
-To run the notebooks, install the `notebook` extra (`pip install -e ".[notebook]"`) and select the `cortical` kernel.
+- `notebooks/03_sensory_decoding.ipynb` asks whether the ring-2 stimulus angle can be decoded from the ring-1 patch of the trained `patched_wiring` network, which ring 2's inputs never reach directly. It uses time-resolved, cross-validated linear decoding, with a ceiling, a shuffle null and a distance-matched control. It needs the `analysis` extra (scikit-learn) and takes about 8 minutes.
+
+To run the notebooks, install the `notebook` extra (`pip install -e ".[notebook,analysis]"`) and select the `cortical` kernel.
 
 ### Layout
 
@@ -75,6 +77,7 @@ src/cortical/
   wiring.py         input groups, patch layouts and the input mask
   model.py          masked LM-RNN (ReLU nn.RNN + dense readout)
   evaluate.py       fixed evaluation streams and strict per-trial accuracy
+  decode.py         trial collection, decoding regions, time-resolved angle decoder
   train.py          training CLI with checkpoint/resume
 notebooks/          task gallery, input-patch experiment
 results/            run metrics (weights are git-ignored)
