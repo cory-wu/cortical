@@ -132,6 +132,28 @@ def collect(
 MATCH_TOLERANCE = 0.5  # max |distance difference| for a matched pair
 
 
+def _paired_control(
+    region: np.ndarray, source: np.ndarray, input_free: np.ndarray, distance: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Pair ``region`` units with input-free units at the same distance from ``source``.
+
+    Greedy, nearest-to-``source`` first; ties go to the lowest unit index, and each
+    partner is used once. Returns the paired region units and their partners, sorted.
+    """
+    to_source = distance[:, source].min(axis=1)
+    available = input_free.copy()
+    near, matched = [], []
+    for unit in region[np.argsort(to_source[region], kind="stable")]:
+        candidates = np.flatnonzero(available)
+        gaps = np.abs(to_source[candidates] - to_source[unit])
+        best = int(np.argmin(gaps))  # first minimum: the lowest unit index
+        if gaps[best] <= MATCH_TOLERANCE:
+            near.append(unit)
+            matched.append(candidates[best])
+            available[candidates[best]] = False
+    return np.sort(np.array(near)), np.sort(np.array(matched))
+
+
 def regions(L: int, layout: Layout) -> dict[str, np.ndarray]:
     """Unit indices of the decoding regions.
 
@@ -140,27 +162,24 @@ def regions(L: int, layout: Layout) -> dict[str, np.ndarray]:
       patch. Ring 1 is the region farthest from ring 2, so only its nearer units have
       input-free partners at the same distance. ``ring1_near`` is the ring-1 units that
       found a partner within ``MATCH_TOLERANCE``, and ``matched`` is those partners.
+    - ``ring2_near`` and ``matched_to_ring1``: the same control with the rings swapped,
+      for decoding ring-1 information from the ring-2 patch.
     """
     patches = {group: square_patch(L, centre, size) for group, (centre, size) in layout.items()}
     ring1, ring2 = patches["ring1"], patches["ring2"]
-    to_ring2 = torus_distance(L)[:, ring2].min(axis=1)
-    available = np.ones(L * L, dtype=bool)
-    available[np.concatenate(list(patches.values()))] = False
-    near, matched = [], []
-    for unit in ring1[np.argsort(to_ring2[ring1], kind="stable")]:
-        candidates = np.flatnonzero(available)
-        gaps = np.abs(to_ring2[candidates] - to_ring2[unit])
-        best = int(np.argmin(gaps))  # first minimum: the lowest unit index
-        if gaps[best] <= MATCH_TOLERANCE:
-            near.append(unit)
-            matched.append(candidates[best])
-            available[candidates[best]] = False
+    distance = torus_distance(L)
+    input_free = np.ones(L * L, dtype=bool)
+    input_free[np.concatenate(list(patches.values()))] = False
+    ring1_near, matched = _paired_control(ring1, ring2, input_free, distance)
+    ring2_near, matched_to_ring1 = _paired_control(ring2, ring1, input_free, distance)
     return {
         "ring1": ring1,
         "ring2": ring2,
         "ring1_self": ring1.copy(),
-        "ring1_near": np.sort(np.array(near)),
-        "matched": np.sort(np.array(matched)),
+        "ring1_near": ring1_near,
+        "matched": matched,
+        "ring2_near": ring2_near,
+        "matched_to_ring1": matched_to_ring1,
     }
 
 

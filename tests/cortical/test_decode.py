@@ -147,10 +147,13 @@ def region_units():
 
 
 def test_region_sizes(region_units):
-    assert set(region_units) == {"ring1", "ring2", "ring1_self", "ring1_near", "matched"}
+    assert set(region_units) == {
+        "ring1", "ring2", "ring1_self", "ring1_near", "matched", "ring2_near", "matched_to_ring1",
+    }  # fmt: skip
     for name in ("ring1", "ring2", "ring1_self"):
         assert len(region_units[name]) == 324
     assert len(region_units["matched"]) == len(region_units["ring1_near"]) >= 100
+    assert len(region_units["matched_to_ring1"]) == len(region_units["ring2_near"]) >= 100
 
 
 def test_patches_match_layout(region_units):
@@ -214,3 +217,14 @@ def test_invalid_steps_excluded():
 
 def test_circular_error_wraps():
     assert np.isclose(circular_error(np.array([0.1]), np.array([2 * np.pi - 0.1]))[0], 0.2)
+
+
+def test_mirrored_paired_control(region_units):
+    """ring2_near / matched_to_ring1 mirror ring1_near / matched with the rings swapped."""
+    near, matched = region_units["ring2_near"], region_units["matched_to_ring1"]
+    assert set(near) <= set(region_units["ring2"])
+    in_patches = np.concatenate([square_patch(50, c, s) for c, s in LAYOUT_B_LARGE.values()])
+    assert not set(matched) & set(in_patches)
+    assert len(set(matched)) == len(matched)
+    to_ring1 = torus_distance(50)[:, region_units["ring1"]].min(axis=1)
+    assert np.abs(np.sort(to_ring1[matched]) - np.sort(to_ring1[near])).max() <= 0.5
